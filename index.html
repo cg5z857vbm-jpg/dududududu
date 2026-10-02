@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>❤️ Habit Tracker - Sage Desk Edition</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Playfair Display, Cormorant Garamond & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            bg: '#f8f9f6',
+                            card: '#f4f6f1',
+                            border: '#dce2d7',
+                            accent: '#8fa89b',
+                            accentHover: '#7a9688',
+                            light: '#eaf0eb',
+                            dark: '#4a5d52',
+                            text: '#2d3832',
+                            muted: '#6c7a72'
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'serif'],
+                        cursive: ['Cormorant Garamond', 'serif'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #222b27;
+            background-image: radial-gradient(#2d3832 1px, transparent 1px), radial-gradient(#2d3832 1px, #222b27 1px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            font-family: 'Inter', sans-serif;
+            color: #2d3832;
+        }
+
+        .sage-card {
+            background: rgba(248, 249, 246, 0.96);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Custom scrollbar for horizontal month grid */
+        .grid-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+        .grid-scroll::-webkit-scrollbar-track {
+            background: #eaeee8;
+            border-radius: 10px;
+        }
+        .grid-scroll::-webkit-scrollbar-thumb {
+            background: #b6c6bd;
+            border-radius: 10px;
+        }
+        .grid-scroll::-webkit-scrollbar-thumb:hover {
+            background: #7a9688;
+        }
+
+        /* Habit completion bubble styles */
+        .bubble-check {
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .bubble-check:hover {
+            transform: scale(1.15);
+        }
+        .bubble-check.active {
+            background-color: #8fa89b;
+            border-color: #4a5d52;
+            box-shadow: 0 2px 6px rgba(143, 168, 155, 0.5);
+        }
+
+        /* Print formatting */
+        @media print {
+            body {
+                background: white !important;
+                padding: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .sage-card {
+                box-shadow: none !important;
+                border: 1px solid #dce2d7 !important;
+                background: white !important;
+                padding: 10px !important;
+                border-radius: 0 !important;
+            }
+            .grid-scroll {
+                overflow: visible !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-3 md:p-6 flex flex-col items-center justify-start">
+
+    <!-- Top Utility Bar -->
+    <header class="w-full max-w-7xl mb-4 bg-sage-bg/95 backdrop-blur border border-sage-border rounded-2xl p-3 px-5 flex flex-wrap items-center justify-between gap-3 shadow-lg no-print">
+        <div class="flex items-center gap-3">
+            <span class="text-xl">❤️</span>
+            <div>
+                <h1 class="font-serif font-semibold text-sage-text text-lg leading-tight">❤️ Habit</h1>
+                <p class="font-cursive italic text-xs text-sage-muted">Botanical Sage Study Desk Edition</p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-xs font-medium">
+            <!-- Auto save badge -->
+            <span id="saveStatus" class="bg-sage-light text-sage-dark border border-sage-accent/40 px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all">
+                <i class="fa-solid font-normal fa-check text-xs text-sage-dark"></i> Auto-Saved
+            </span>
+
+            <!-- Actions -->
+            <button onclick="openAddModal()" class="bg-sage-card hover:bg-sage-light text-sage-text border border-sage-border px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                <i class="fa-solid fa-plus text-xs"></i> Add Habit
+            </button>
+
+            <button onclick="resetCurrentMonth()" class="bg-sage-card hover:bg-sage-light text-sage-text border border-sage-border px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                <i class="fa-solid fa-arrow-rotate-left text-xs"></i> Reset Month
+            </button>
+
+            <button onclick="window.print()" class="bg-sage-dark hover:bg-sage-accentHover text-white px-4 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                <i class="fa-solid fa-print text-xs"></i> Print Sheet
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Habit Tracker Container -->
+    <main class="w-full max-w-7xl sage-card rounded-3xl p-4 md:p-8 relative border border-sage-border/80 min-h-[80vh]">
+        <!-- Top Title & Controls Row -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between border-b border-sage-border/60 pb-6 mb-6 gap-4">
+            <div>
+                <div class="flex items-baseline gap-3">
+                    <h2 class="text-3xl md:text-4xl font-serif text-sage-text font-normal tracking-wide">❤️ Habit Tracker</h2>
+                    <span class="font-cursive italic text-2xl text-sage-muted">Personal</span>
+                </div>
+                <p class="text-xs text-sage-muted mt-1">Cultivate your daily mindfulness and routines step by step</p>
+            </div>
+
+            <!-- Month & Year Selectors -->
+            <div class="flex flex-wrap items-center gap-4 bg-sage-light/80 p-2.5 px-4 rounded-2xl border border-sage-border">
+                <!-- Month Selection -->
+                <div class="flex items-center gap-2">
+                    <span class="font-serif italic text-sm text-sage-muted">Month:</span>
+                    <select id="monthSelect" onchange="changeMonth(this.value)" class="bg-transparent font-serif font-medium text-sage-text text-sm cursor-pointer focus:outline-none border-b border-sage-dark pb-0.5">
+                        <option value="1">1 (Jan)</option>
+                        <option value="2">2 (Feb)</option>
+                        <option value="3">3 (Mar)</option>
+                        <option value="4">4 (Apr)</option>
+                        <option value="5">5 (May)</option>
+                        <option value="6">6 (Jun)</option>
+                        <option value="7">7 (Jul)</option>
+                        <option value="8">8 (Aug)</option>
+                        <option value="9">9 (Sep)</option>
+                        <option value="10">10 (Oct)</option>
+                        <option value="11">11 (Nov)</option>
+                        <option value="12">12 (Dec)</option>
+                    </select>
+                </div>
+
+                <div class="h-4 w-px bg-sage-border"></div>
+
+                <!-- Year Selection -->
+                <div class="flex items-center gap-2">
+                    <span class="font-serif italic text-sm text-sage-muted">Year:</span>
+                    <input type="number" id="yearInput" min="2020" max="2035" onchange="changeYear(this.value)" class="bg-transparent font-serif font-medium text-sage-text text-sm w-16 focus:outline-none border-b border-sage-dark pb-0.5">
+                </div>
+            </div>
+        </div>
+
+        <!-- Daytime Section Filters / View Toggles -->
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6 no-print">
+            <div class="flex items-center gap-1.5 bg-sage-light p-1 rounded-2xl border border-sage-border/70 text-xs">
+                <button onclick="filterTimeOfDay('all')" id="filter-all" class="filter-btn px-3 py-1.5 rounded-xl font-medium transition bg-white shadow-sm text-sage-text">
+                    All Routines
+                </button>
+                <button onclick="filterTimeOfDay('morning')" id="filter-morning" class="filter-btn px-3 py-1.5 rounded-xl font-medium transition text-sage-muted hover:text-sage-text">
+                    🌅 Morning
+                </button>
+                <button onclick="filterTimeOfDay('afternoon')" id="filter-afternoon" class="filter-btn px-3 py-1.5 rounded-xl font-medium transition text-sage-muted hover:text-sage-text">
+                    ☀️ Afternoon
+                </button>
+                <button onclick="filterTimeOfDay('evening')" id="filter-evening" class="filter-btn px-3 py-1.5 rounded-xl font-medium transition text-sage-muted hover:text-sage-text">
+                    🌙 Evening
+                </button>
+            </div>
+
+            <!-- Overall Progress Indicator -->
+            <div class="flex items-center gap-3 text-xs">
+                <span class="text-sage-muted font-medium">Monthly Progress:</span>
+                <div class="w-32 bg-sage-light rounded-full h-2.5 border border-sage-border overflow-hidden">
+                    <div id="monthlyProgressBar" class="bg-gradient-to-r from-sage-accent to-sage-dark h-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <span id="monthlyProgressText" class="font-serif font-semibold text-sage-dark">0%</span>
+            </div>
+        </div>
+
+        <!-- Habits Grid Container -->
+        <div class="overflow-x-auto grid-scroll pb-4">
+            <div id="habitGrid" class="min-w-[900px]">
+                <!-- Grid content generated dynamically by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Footer Note -->
+        <div class="mt-8 pt-4 border-t border-sage-border/40 text-center text-xs font-cursive italic text-sage-muted">
+            Designed for serene personal routines & productivity
+        </div>
+    </main>
+
+    <!-- Add / Edit Habit Modal -->
+    <div id="habitModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-sage-bg border border-sage-border w-full max-w-md rounded-3xl p-6 shadow-2xl relative">
+            <button onclick="closeAddModal()" class="absolute top-4 right-4 text-sage-muted hover:text-sage-text p-2">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <h3 id="modalTitle" class="font-serif text-2xl text-sage-text mb-4">Add New Habit</h3>
+
+            <form id="habitForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <input type="hidden" id="editHabitId" value="">
+
+                <div>
+                    <label class="block text-xs font-medium text-sage-muted mb-1">Habit Name</label>
+                    <input type="text" id="habitNameInput" required placeholder="e.g. Morning Tea, Read 20 Pages, Evening Walk" class="w-full bg-sage-card border border-sage-border rounded-xl px-3.5 py-2.5 text-sm text-sage-text focus:outline-none focus:border-sage-dark transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-sage-muted mb-1">Time of Day Category</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="timeOfDay" value="morning" checked class="peer hidden">
+                            <div class="p-2.5 rounded-xl border border-sage-border bg-sage-card text-center peer-checked:border-sage-dark peer-checked:bg-sage-light text-xs font-medium text-sage-text transition">
+                                🌅 Morning
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="timeOfDay" value="afternoon" class="peer hidden">
+                            <div class="p-2.5 rounded-xl border border-sage-border bg-sage-card text-center peer-checked:border-sage-dark peer-checked:bg-sage-light text-xs font-medium text-sage-text transition">
+                                ☀️ Afternoon
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="timeOfDay" value="evening" class="peer hidden">
+                            <div class="p-2.5 rounded-xl border border-sage-border bg-sage-card text-center peer-checked:border-sage-dark peer-checked:bg-sage-light text-xs font-medium text-sage-text transition">
+                                🌙 Evening
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeAddModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-sage-muted hover:bg-sage-card">Cancel</button>
+                    <button type="submit" class="px-5 py-2 bg-sage-dark hover:bg-sage-accentHover text-white rounded-xl text-xs font-medium shadow-sm transition">Save Habit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        const defaultHabits = [
+            { id: '1', name: 'Morning Tea & Gratitude', timeOfDay: 'morning' },
+            { id: '2', name: 'Focused Deep Work', timeOfDay: 'afternoon' },
+            { id: '3', name: 'Reading & Night Skincare', timeOfDay: 'evening' }
+        ];
+
+        let state = {
+            year: 2026,
+            month: 10,
+            currentFilter: 'all',
+            habits: [],
+            completions: {} // Format: { "YYYY-MM-DD_habitId": true }
+        };
+
+        // Initialize Application
+        window.onload = function() {
+            loadFromLocalStorage();
+            document.getElementById('yearInput').value = state.year;
+            document.getElementById('monthSelect').value = state.month;
+            renderHabitGrid();
+        };
+
+        function saveToLocalStorage() {
+            localStorage.setItem('heart_habit_state_sage', JSON.stringify(state));
+            showSaveIndicator();
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('heart_habit_state_sage');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    state = { ...state, ...parsed };
+                } catch(e) {
+                    console.error("Could not parse saved state", e);
+                }
+            }
+            if (!state.habits || state.habits.length === 0) {
+                state.habits = [...defaultHabits];
+            }
+        }
+
+        function showSaveIndicator() {
+            const el = document.getElementById('saveStatus');
+            el.classList.add('scale-105', 'bg-sage-accent/30');
+            setTimeout(() => {
+                el.classList.remove('scale-105', 'bg-sage-accent/30');
+            }, 300);
+        }
+
+        function getDaysInMonth(year, month) {
+            return new Date(year, month, 0).getDate();
+        }
+
+        function changeMonth(m) {
+            state.month = parseInt(m);
+            saveToLocalStorage();
+            renderHabitGrid();
+        }
+
+        function changeYear(y) {
+            state.year = parseInt(y) || 2026;
+            saveToLocalStorage();
+            renderHabitGrid();
+        }
+
+        function filterTimeOfDay(filter) {
+            state.currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'shadow-sm', 'text-sage-text');
+                btn.classList.add('text-sage-muted');
+            });
+            const activeBtn = document.getElementById(`filter-${filter}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-white', 'shadow-sm', 'text-sage-text');
+                activeBtn.classList.remove('text-sage-muted');
+            }
+            renderHabitGrid();
+        }
+
+        function renderHabitGrid() {
+            const container = document.getElementById('habitGrid');
+            const totalDays = getDaysInMonth(state.year, state.month);
+
+            // Filter habits based on selected tab
+            const habitsToDisplay = state.habits.filter(h => {
+                if (state.currentFilter === 'all') return true;
+                return h.timeOfDay === state.currentFilter;
+            });
+
+            if (habitsToDisplay.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 border-2 border-dashed border-sage-border rounded-2xl">
+                        <p class="font-serif italic text-sage-muted text-lg">No habits found in this category.</p>
+                        <button onclick="openAddModal()" class="mt-3 text-xs bg-sage-dark text-white px-4 py-2 rounded-xl">
+                            + Add New Habit
+                        </button>
+                    </div>
+                `;
+                updateProgress(0, 0);
+                return;
+            }
+
+            // Categories layout
+            const categories = [
+                { key: 'morning', title: 'Morning Routine 🌅', habits: habitsToDisplay.filter(h => h.timeOfDay === 'morning') },
+                { key: 'afternoon', title: 'Afternoon Focus ☀️', habits: habitsToDisplay.filter(h => h.timeOfDay === 'afternoon') },
+                { key: 'evening', title: 'Evening Unwind 🌙', habits: habitsToDisplay.filter(h => h.timeOfDay === 'evening') }
+            ];
+
+            let html = '';
+
+            // Header Days Row
+            html += `<div class="flex items-center border-b border-sage-border/80 pb-2 mb-4 font-serif text-xs text-sage-muted">`;
+            html += `<div class="w-64 pr-4 font-semibold">Habits</div>`;
+            html += `<div class="flex-1 flex justify-around">`;
+            for (let day = 1; day <= totalDays; day++) {
+                html += `<div class="w-6 text-center font-medium text-[11px]">${day}</div>`;
+            }
+            html += `</div></div>`;
+
+            let totalCheckable = 0;
+            let totalChecked = 0;
+
+            categories.forEach(cat => {
+                if (cat.habits.length === 0) return;
+
+                html += `<div class="mb-6">`;
+                html += `<div class="text-xs font-serif italic font-semibold text-sage-dark mb-2 flex items-center gap-2">`;
+                html += `<span>${cat.title}</span>`;
+                html += `<div class="h-px bg-sage-border/60 flex-1"></div>`;
+                html += `</div>`;
+
+                cat.habits.forEach((habit, index) => {
+                    html += `<div class="flex items-center py-2 hover:bg-sage-light/60 rounded-xl transition px-1 group">`;
+                    
+                    // Habit Name & Action Buttons
+                    html += `<div class="w-64 pr-4 flex items-center justify-between">`;
+                    html += `<div class="flex items-center gap-2 truncate">`;
+                    html += `<span class="font-cursive italic text-xs text-sage-muted w-4">${index + 1}.</span>`;
+                    html += `<span class="text-xs font-medium text-sage-text truncate" title="${habit.name}">${habit.name}</span>`;
+                    html += `</div>`;
+                    
+                    // Action controls
+                    html += `<div class="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition no-print">`;
+                    html += `<button onclick="editHabit('${habit.id}')" class="text-sage-muted hover:text-sage-text text-[11px] p-1"><i class="fa-solid fa-pen"></i></button>`;
+                    html += `<button onclick="deleteHabit('${habit.id}')" class="text-sage-muted hover:text-rose-600 text-[11px] p-1"><i class="fa-solid fa-trash"></i></button>`;
+                    html += `</div>`;
+                    html += `</div>`;
+
+                    // Day Check Circles
+                    html += `<div class="flex-1 flex justify-around items-center">`;
+                    for (let day = 1; day <= totalDays; day++) {
+                        const dateKey = `${state.year}-${state.month}-${day}_${habit.id}`;
+                        const isDone = !!state.completions[dateKey];
+
+                        totalCheckable++;
+                        if (isDone) totalChecked++;
+
+                        html += `
+                            <button 
+                                onclick="toggleCompletion('${dateKey}')" 
+                                class="w-5 h-5 rounded-full border border-sage-border flex items-center justify-center transition bubble-check ${isDone ? 'active' : 'bg-white/80 hover:border-sage-dark'}"
+                                title="Day ${day}: ${habit.name}">
+                                ${isDone ? '<i class="fa-solid fa-check text-[9px] text-white"></i>' : ''}
+                            </button>
+                        `;
+                    }
+                    html += `</div>`;
+                    html += `</div>`;
+                });
+
+                html += `</div>`;
+            });
+
+            container.innerHTML = html;
+            updateProgress(totalChecked, totalCheckable);
+        }
+
+        function toggleCompletion(key) {
+            if (state.completions[key]) {
+                delete state.completions[key];
+            } else {
+                state.completions[key] = true;
+            }
+            saveToLocalStorage();
+            renderHabitGrid();
+        }
+
+        function updateProgress(checked, total) {
+            const bar = document.getElementById('monthlyProgressBar');
+            const text = document.getElementById('monthlyProgressText');
+            if (!total || total === 0) {
+                bar.style.width = '0%';
+                text.innerText = '0%';
+                return;
+            }
+            const percentage = Math.round((checked / total) * 100);
+            bar.style.width = `${percentage}%`;
+            text.innerText = `${percentage}%`;
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').innerText = 'Add New Habit';
+            document.getElementById('editHabitId').value = '';
+            document.getElementById('habitNameInput').value = '';
+            document.getElementById('habitModal').classList.remove('hidden');
+            document.getElementById('habitModal').classList.add('flex');
+        }
+
+        function closeAddModal() {
+            document.getElementById('habitModal').classList.add('hidden');
+            document.getElementById('habitModal').classList.remove('flex');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('editHabitId').value;
+            const name = document.getElementById('habitNameInput').value.trim();
+            const timeOfDay = document.querySelector('input[name="timeOfDay"]:checked').value;
+
+            if (!name) return;
+
+            if (id) {
+                const idx = state.habits.findIndex(h => h.id === id);
+                if (idx !== -1) {
+                    state.habits[idx].name = name;
+                    state.habits[idx].timeOfDay = timeOfDay;
+                }
+            } else {
+                const newHabit = {
+                    id: Date.now().toString(),
+                    name,
+                    timeOfDay
+                };
+                state.habits.push(newHabit);
+            }
+
+            saveToLocalStorage();
+            renderHabitGrid();
+            closeAddModal();
+        }
+
+        function editHabit(id) {
+            const habit = state.habits.find(h => h.id === id);
+            if (!habit) return;
+
+            document.getElementById('modalTitle').innerText = 'Edit Habit';
+            document.getElementById('editHabitId').value = habit.id;
+            document.getElementById('habitNameInput').value = habit.name;
+
+            const radio = document.querySelector(`input[name="timeOfDay"][value="${habit.timeOfDay}"]`);
+            if (radio) radio.checked = true;
+
+            document.getElementById('habitModal').classList.remove('hidden');
+            document.getElementById('habitModal').classList.add('flex');
+        }
+
+        function deleteHabit(id) {
+            state.habits = state.habits.filter(h => h.id !== id);
+            saveToLocalStorage();
+            renderHabitGrid();
+        }
+
+        function resetCurrentMonth() {
+            const totalDays = getDaysInMonth(state.year, state.month);
+            state.habits.forEach(h => {
+                for (let day = 1; day <= totalDays; day++) {
+                    delete state.completions[`${state.year}-${state.month}-${day}_${h.id}`];
+                }
+            });
+            saveToLocalStorage();
+            renderHabitGrid();
+        }
+    </script>
+</body>
+</html>
